@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancelled | BEAT THE FOX</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: #0d0d1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      padding: 24px;
+    }
+
+    .emoji {
+      font-size: clamp(64px, 12vw, 96px);
+      margin-bottom: 16px;
+      animation: sway 2s ease-in-out infinite;
+    }
+
+    @keyframes sway {
+      0%, 100% { transform: rotate(-6deg); }
+      50%       { transform: rotate(6deg); }
+    }
+
+    h1 {
+      font-family: 'Arial Black', Impact, sans-serif;
+      font-size: clamp(22px, 5vw, 40px);
+      color: #FF6600;
+      text-shadow: 0 0 24px rgba(255,102,0,0.5);
+      text-align: center;
+      margin-bottom: 14px;
+      max-width: 560px;
+    }
+
+    .sub {
+      color: rgba(255,255,200,0.75);
+      font-size: clamp(13px, 2.2vw, 15px);
+      text-align: center;
+      max-width: 480px;
+      line-height: 1.6;
+      margin-bottom: 44px;
+    }
+
+    /* Stat card */
+    .card {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid rgba(255,102,0,0.4);
+      border-radius: 16px;
+      padding: 24px 30px;
+      width: min(420px, 100%);
+      margin-bottom: 38px;
+      text-align: center;
+    }
+
+    .card-title {
+      font-family: 'Arial Black', Impact, sans-serif;
+      font-size: 13px;
+      color: #FF6600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .card-stat {
+      font-size: clamp(14px, 3vw, 17px);
+      color: rgba(255,210,210,0.9);
+      line-height: 2;
+    }
+
+    /* Button */
+    .play-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #FF8800, #CC4400);
+      color: #fff;
+      text-decoration: none;
+      font-family: 'Arial Black', Impact, sans-serif;
+      font-size: 18px;
+      font-weight: bold;
+      padding: 16px 42px;
+      border-radius: 14px;
+      border: 2px solid #FFD700;
+      box-shadow: 0 4px 24px rgba(255,102,0,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .play-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(255,102,0,0.6);
+    }
+
+    .fine-print {
+      margin-top: 22px;
+      color: rgba(255,255,255,0.22);
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="emoji">👀</div>
+  <h1>Donation cancelled. Just like Fox in the clutch.</h1>
+  <p class="sub">
+    No worries — Fox probably didn't deserve it anyway.<br>
+    4/14 FG. 5 turnovers. -18. Just saying.
+  </p>
+
+  <div class="card">
+    <div class="card-title">Fox's Game 4 Clutch Moments</div>
+    <div class="card-stat">
+      Clutch FG attempts: 0/3 ❄️<br>
+      Turnover in final 2 min: Yes 🤦<br>
+      Times helped by charity: Never 💸<br>
+      Times he cancelled on the team: 1
+    </div>
+  </div>
+
+  <a class="play-btn" href="index.html">▶ PLAY AGAIN</a>
+  <div class="fine-print">Your payment was not charged.</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "beat-the-fox",
+  "version": "1.0.0",
+  "description": "Beat De'Aaron Fox arcade game with donations",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "stripe": "latest"
+  }
+}

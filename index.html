@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>BEAT THE FOX: Game 4 Revenge</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0d0d1a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      touch-action: none;
+    }
+    #c { display: block; cursor: crosshair; }
+
+    /* ---- Donate button ---- */
+    #donate-btn {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      background: linear-gradient(135deg, #FF8800, #CC4400);
+      color: #fff;
+      border: 2px solid #FFD700;
+      border-radius: 28px;
+      padding: 11px 20px;
+      font-family: 'Arial Black', Impact, sans-serif;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(255,102,0,0.5);
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: none;
+      white-space: nowrap;
+    }
+    #donate-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(255,102,0,0.75);
+    }
+
+    /* ---- Modal overlay ---- */
+    #donate-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    #donate-overlay.open { display: flex; }
+
+    /* ---- Modal box ---- */
+    #donate-modal {
+      background: #1a1a2e;
+      border: 2px solid #FF6600;
+      border-radius: 18px;
+      padding: 32px 28px 24px;
+      width: min(460px, 100%);
+      position: relative;
+      box-shadow: 0 0 60px rgba(255,102,0,0.3);
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+
+    #donate-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.45);
+      font-size: 22px;
+      cursor: pointer;
+      line-height: 1;
+      transition: color 0.12s;
+    }
+    #donate-close:hover { color: #FF6600; }
+
+    #donate-modal h2 {
+      font-family: 'Arial Black', Impact, sans-serif;
+      font-size: clamp(18px, 5vw, 24px);
+      color: #FF6600;
+      text-align: center;
+      margin-bottom: 6px;
+      text-shadow: 0 0 14px rgba(255,102,0,0.45);
+    }
+
+    #donate-modal .dm-sub {
+      color: rgba(255,255,200,0.8);
+      text-align: center;
+      font-size: 13px;
+      margin-bottom: 24px;
+      line-height: 1.45;
+    }
+
+    /* Preset pills */
+    #donate-presets {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .donate-preset {
+      background: transparent;
+      border: 2px solid #FF6600;
+      color: #FF6600;
+      border-radius: 22px;
+      padding: 8px 20px;
+      font-weight: bold;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.13s, color 0.13s;
+    }
+    .donate-preset:hover,
+    .donate-preset.sel { background: #FF6600; color: #fff; }
+
+    /* Custom amount */
+    .dm-custom-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .dm-custom-row label {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    #donate-custom {
+      flex: 1;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,102,0,0.4);
+      border-radius: 10px;
+      color: #fff;
+      padding: 9px 14px;
+      font-size: 15px;
+      outline: none;
+      min-width: 0;
+    }
+    #donate-custom:focus { border-color: #FF6600; }
+    #donate-custom::placeholder { color: rgba(255,255,255,0.28); }
+
+    /* Submit */
+    #donate-submit {
+      width: 100%;
+      background: linear-gradient(135deg, #FF8800, #CC4400);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-family: 'Arial Black', Impact, sans-serif;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-bottom: 12px;
+      letter-spacing: 0.4px;
+    }
+    #donate-submit:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    #donate-submit:active:not(:disabled) { transform: translateY(0); }
+    #donate-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .dm-disclaimer {
+      text-align: center;
+      color: rgba(255,255,255,0.3);
+      font-size: 11px;
+    }
+  </style>
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- Floating donate button — visible during gameplay and game over only -->
+<button id="donate-btn" aria-label="Open donation modal">☕ Fund Fox's Training</button>
+
+<!-- Donation modal -->
+<div id="donate-overlay" role="dialog" aria-modal="true" aria-labelledby="dm-title">
+  <div id="donate-modal">
+    <button id="donate-close" aria-label="Close donation modal">✕</button>
+    <h2 id="dm-title">HELP FOX RECOVER 🦊</h2>
+    <p class="dm-sub">Your donation goes directly to Fox's dribbling camp fund</p>
+
+    <div id="donate-presets">
+      <button class="donate-preset" data-amount="1">$1</button>
+      <button class="donate-preset sel" data-amount="5">$5</button>
+      <button class="donate-preset" data-amount="10">$10</button>
+      <button class="donate-preset" data-amount="25">$25</button>
+    </div>
+
+    <div class="dm-custom-row">
+      <label for="donate-custom">Custom $</label>
+      <input id="donate-custom" type="number" min="1" max="1000" placeholder="Enter amount" />
+    </div>
+
+    <button id="donate-submit">DONATE</button>
+    <p class="dm-disclaimer">Powered by Stripe &bull; Secure payment</p>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ==========================================================
+   1. CONSTANTS & CONFIG
+   ========================================================== */
+
+const COLORS = {
+  foxOrange:     '#FF6600',
+  foxOrangeDark: '#CC4400',
+  foxEarInner:   '#FF2200',
+  foxTan:        '#F4C2A1',
+  hardwood:      '#C8A96E',
+  courtLine:     'rgba(255,255,255,0.9)',
+  paint:         'rgba(160,80,20,0.2)',
+  gold:          '#FFD700',
+  green:         '#00CC44',
+};
+
+const TAGLINES = [
+  '"He had 3 turnovers in 4 minutes."',
+  '"The Fox forgot how to dribble."',
+  '"Even the ball didn\'t want to be held by him."',
+];
+
+const COMMENTARY = [
+  "Fox fumbles again! Classic.",
+  "The ball called — it wants a new owner.",
+  "Game 4 flashbacks!",
+  "Turnover machine activated.",
+  "Even his shadow has better handles.",
+  "De'Aaron... De'Awful.",
+  "Did he just trip over his own crossover?",
+  "STEAL! The Fox got FOXED!",
+  "The court is slippery… or maybe it's just him.",
+  "This is why we have Game 5.",
+  "5 turnovers and counting!",
+  "He saw a camera and panicked.",
+];
+
+const STEAL_MSGS     = ["STEAL! 🎉", "FOXED! 🦊", "GOT HIM! 💪", "SWIPED! 🏀"];
+const FOX_SCORE_MSGS = ["He scored!! 😭", "Fox scores?? 😩", "Not again!! 😱", "Really?? 😤"];
+
+/* ==========================================================
+   2. CANVAS SETUP
+   ========================================================== */
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W = 900, H = 560;
+
+function resize() {
+  W = Math.min(window.innerWidth  - 20, 900);
+  H = Math.min(window.innerHeight - 20, 560);
+  canvas.width  = W;
+  canvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ==========================================================
+   3. GAME STATE
+   ========================================================== */
+
+const GS = {
+  screen:    'menu',   // 'menu' | 'playing' | 'gameover'
+  pScore:    0,        // player steals
+  fScore:    0,        // fox baskets
+  timeLeft:  60,
+  gameStart: 0,        // performance.now() when game started
+  // menu animation
+  tagIdx:    0,
+  tagTimer:  0,
+  particles: [],
+  menuBtns:  {},
+  // commentary
+  cText:     COMMENTARY[0],
+  cTimer:    0,
+  cDur:      3.5,
+  cAlpha:    1,
+  // gameover buttons
+  goBtns:    {},
+};
+
+/* ==========================================================
+   4. MATH UTILITIES
+   ========================================================== */
+
+function crPoint(p0, p1, p2, p3, t) {
+  const t2 = t * t, t3 = t2 * t;
+  return {
+    x: 0.5*(2*p1.x + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+    y: 0.5*(2*p1.y + (-p0.y+p2.y)*t + (2*p0.y-5*p1.y+4*p2.y-p3.y)*t2 + (-p0.y+3*p1.y-3*p2.y+p3.y)*t3),
+  };
+}
+
+// Precompute Catmull-Rom path from left side → right basket
+function makePath() {
+  const mg = 32;
+  const r  = () => mg + Math.random() * (H - mg * 2);
+  const sy = r();
+  const ey = H / 2 + (Math.random() - 0.5) * H * 0.28;
+
+  // Control points; path ends near right basket rim (~0.77W)
+  const ctrl = [
+    { x: 0,        y: sy },   // phantom start
+    { x: mg + 12,  y: sy },   // actual start
+    { x: W * 0.22, y: r()  },
+    { x: W * 0.42, y: r()  },
+    { x: W * 0.62, y: r()  },
+    { x: W * 0.77, y: ey   },  // end at basket
+    { x: W * 0.83, y: ey   },  // phantom end
+  ];
+
+  const pts = [];
+  const N   = ctrl.length - 3;
+  for (let s = 0; s < N; s++) {
+    for (let i = 0; i <= 80; i++) {
+      pts.push(crPoint(ctrl[s], ctrl[s+1], ctrl[s+2], ctrl[s+3], i / 80));
+    }
+  }
+  return pts;
+}
+
+// Rounded rectangle path helper
+function rr(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y,     x + w, y + r,     r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x,     y + h, x,     y + h - r, r);
+  ctx.lineTo(x,     y + r);
+  ctx.arcTo(x,     y,     x + r, y,         r);
+  ctx.closePath();
+}
+
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+/* ==========================================================
+   5. FOX CLASS
+   ========================================================== */
+
+class Fox {
+  constructor() {
+    this.R  = 28;   // body radius
+    this.bR = 10;   // ball radius
+    this._reset();
+  }
+
+  _reset() {
+    this.path    = makePath();
+    this.prog    = 0;
+    this.bobPh   = Math.random() * Math.PI * 2;
+    this.trail   = [];
+    this.tripped = false;
+    this.tripT   = 0;
+    this.tripDur = 1.6;
+    this.spinPh  = 0;
+    this.x = 0; this.y = 0;
+    this._move(0);
+  }
+
+  // Speed increases over game time (every ~10s)
+  get _spd() {
+    const e = (performance.now() - GS.gameStart) / 1000;
+    return 0.0026 + Math.min(e / 10, 1.0) * 0.0042;
+  }
+
+  _move(prog) {
+    const maxI = this.path.length - 1;
+    const f    = Math.max(0, Math.min(1, prog)) * maxI;
+    const i    = Math.min(Math.floor(f), maxI - 1);
+    const t    = f - i;
+    const a    = this.path[i], b = this.path[i + 1] || a;
+    this.x     = a.x + (b.x - a.x) * t;
+    this.y     = a.y + (b.y - a.y) * t;
+  }
+
+  update(dt) {
+    if (this.tripped) {
+      this.tripT  += dt;
+      this.spinPh += dt * 9;
+      if (this.tripT >= this.tripDur) this._reset();
+      return;
+    }
+
+    this.prog  += this._spd * dt * 60;
+    this.bobPh += dt * 6.5;
+
+    if (this.prog >= 1) {
+      GS.fScore++;
+      // Basket is at approx W*0.77 - offset, use stored rim pos
+      addFx('basket', rimX(), H / 2, pick(FOX_SCORE_MSGS));
+      setCmt(pick(COMMENTARY));
+      this._reset();
+      return;
+    }
+
+    this._move(this.prog);
+    this.trail.push({ x: this.x, y: this.y });
+    if (this.trail.length > 26) this.trail.shift();
+  }
+
+  hit(px, py) {
+    const dx = px - this.x, dy = py - this.y;
+    return dx * dx + dy * dy < (this.R + 8) * (this.R + 8);
+  }
+
+  trip() {
+    this.tripped = true;
+    this.tripT   = 0;
+    this.spinPh  = 0;
+  }
+
+  draw() {
+    if (this.tripped) { this._drawTripped(); return; }
+
+    const bob = Math.sin(this.bobPh) * 5;
+    const fy  = this.y + bob;
+
+    // Orange trail
+    this.trail.forEach((p, i) => {
+      const a = (i / this.trail.length) * 0.36;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, this.R * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,102,0,${a})`;
+      ctx.fill();
+    });
+
+    ctx.save();
+    ctx.translate(this.x, fy);
+    this._body();
+    this._ears();
+    this._face();
+    ctx.restore();
+
+    // Bouncing ball (separate from body)
+    const bby = fy + this.R * 0.6 + Math.abs(Math.sin(this.bobPh * 1.35)) * 12;
+    this._ball(this.x + this.R * 0.85, bby);
+  }
+
+  _body() {
+    const R = this.R;
+    ctx.shadowBlur = 14; ctx.shadowColor = COLORS.foxOrange;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.foxOrange; ctx.fill();
+    ctx.strokeStyle = COLORS.foxOrangeDark; ctx.lineWidth = 2; ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Jersey number 5
+    ctx.font = `bold ${Math.floor(R * 0.8)}px Arial Black, Impact`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 3; ctx.shadowColor = '#000';
+    ctx.fillStyle = '#FFF'; ctx.fillText('5', 0, R * 0.06);
+    ctx.shadowBlur = 0;
+  }
+
+  _ears() {
+    const R = this.R;
+    [-1, 1].forEach(s => {
+      // Outer ear (pointy triangle)
+      ctx.beginPath();
+      ctx.moveTo(s * R * 0.42,  -R * 0.52);
+      ctx.lineTo(s * R * 0.88,  -R * 1.38);
+      ctx.lineTo(s * R * 0.06,  -R * 0.85);
+      ctx.closePath();
+      ctx.fillStyle   = COLORS.foxOrange;
+      ctx.strokeStyle = COLORS.foxOrangeDark;
+      ctx.lineWidth   = 1.5;
+      ctx.fill(); ctx.stroke();
+      // Inner ear
+      ctx.beginPath();
+      ctx.moveTo(s * R * 0.42,  -R * 0.60);
+      ctx.lineTo(s * R * 0.77,  -R * 1.18);
+      ctx.lineTo(s * R * 0.12,  -R * 0.86);
+      ctx.closePath();
+      ctx.fillStyle = COLORS.foxEarInner; ctx.fill();
+    });
+  }
+
+  _face() {
+    const R = this.R;
+    // Muzzle
+    ctx.beginPath();
+    ctx.ellipse(0, R * 0.22, R * 0.52, R * 0.36, 0, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.foxTan; ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(-R * 0.29, -R * 0.12, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc( R * 0.29, -R * 0.12, 4.5, 0, Math.PI * 2); ctx.fill();
+    // Eye shine
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath(); ctx.arc(-R * 0.31, -R * 0.15, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc( R * 0.27, -R * 0.15, 1.8, 0, Math.PI * 2); ctx.fill();
+    // Nose
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.ellipse(0, R * 0.1, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  _ball(bx, by) {
+    const r = this.bR;
+    ctx.save();
+    ctx.shadowBlur = 6; ctx.shadowColor = '#CC4400';
+    ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#FF7700'; ctx.fill();
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 0.9; ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 0.85;
+    // Seams
+    ctx.beginPath(); ctx.moveTo(bx - r, by); ctx.lineTo(bx + r, by); ctx.stroke();
+    ctx.beginPath(); ctx.arc(bx, by, r, 0.15, Math.PI - 0.15, false); ctx.stroke();
+    ctx.beginPath(); ctx.arc(bx, by, r * 0.5, 0.3, Math.PI - 0.3, true); ctx.stroke();
+    ctx.restore();
+  }
+
+  _drawTripped() {
+    const fade = Math.max(0, 1 - this.tripT / this.tripDur);
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.spinPh);
+    ctx.globalAlpha = fade;
+
+    ctx.beginPath(); ctx.arc(0, 0, this.R, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.foxOrange; ctx.fill();
+    ctx.strokeStyle = COLORS.foxOrangeDark; ctx.lineWidth = 2; ctx.stroke();
+
+    // Spinning stars
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + this.spinPh * 0.45;
+      const sx = Math.cos(a) * (this.R + 15);
+      const sy = Math.sin(a) * (this.R + 15);
+      ctx.font = '13px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('⭐', sx, sy);
+    }
+
+    // X eyes
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 3;
+    [[-0.29, -0.12], [0.29, -0.12]].forEach(([ox, oy]) => {
+      const ex = ox * this.R, ey = oy * this.R, s = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(ex - s, ey - s); ctx.lineTo(ex + s, ey + s);
+      ctx.moveTo(ex + s, ey - s); ctx.lineTo(ex - s, ey + s);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // Ball flying away
+    const t2 = this.tripT / this.tripDur;
+    ctx.globalAlpha = fade;
+    this._ball(
+      this.x + t2 * 85  + Math.sin(t2 * Math.PI * 2.5) * 32,
+      this.y - t2 * 60  + t2 * t2 * 125
+    );
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ==========================================================
+   6. CONFETTI
+   ========================================================== */
+
+const CP = [];
+
+function confetti(x, y, n = 42) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const v = 90 + Math.random() * 220;
+    CP.push({
+      x, y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v - 130,
+      rot: Math.random() * Math.PI * 2,
+      rs:  (Math.random() - 0.5) * 14,
+      w: 5 + Math.random() * 7,
+      h: 3 + Math.random() * 4,
+      c: pick(['#FF6600','#FFD700','#FFFFFF','#FF3333','#00CC44','#44AAFF']),
+      l: 1.0,
+      d: 0.5 + Math.random() * 0.6,
+    });
+  }
+}
+
+function updConfetti(dt) {
+  for (let i = CP.length - 1; i >= 0; i--) {
+    const p = CP[i];
+    p.x  += p.vx * dt; p.y  += p.vy * dt;
+    p.vy += 340 * dt;  p.rot += p.rs * dt;
+    p.l  -= p.d  * dt;
+    if (p.l <= 0) CP.splice(i, 1);
+  }
+}
+
+function drawConfetti() {
+  CP.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.l);
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = p.c;
+    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    ctx.restore();
+  });
+}
+
+/* ==========================================================
+   7. EFFECTS
+   ========================================================== */
+
+const FX = [];
+
+function addFx(type, x, y, txt = '') {
+  FX.push({ type, x, y, txt, l: 1.0, t: 0 });
+}
+
+function updFx(dt) {
+  for (let i = FX.length - 1; i >= 0; i--) {
+    FX[i].l -= dt * 1.5; FX[i].t += dt;
+    if (FX[i].l <= 0) FX.splice(i, 1);
+  }
+}
+
+function drawFx() {
+  FX.forEach(e => {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, e.l);
+
+    if (e.type === 'steal') {
+      // Green radial flash
+      const r = 40 + e.t * 70;
+      const g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, r);
+      g.addColorStop(0,   'rgba(0,255,80,0.55)');
+      g.addColorStop(1,   'rgba(0,255,80,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI * 2); ctx.fill();
+      // Floating label
+      ctx.save();
+      ctx.translate(e.x, e.y - 22 - e.t * 62);
+      const sc = 1 + (1 - e.l) * 0.5; ctx.scale(sc, sc);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowBlur = 10; ctx.shadowColor = '#00FF44';
+      ctx.font = 'bold 27px Arial Black, Impact';
+      ctx.fillStyle = '#00FF88'; ctx.fillText(e.txt, 0, 0);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+    } else if (e.type === 'basket') {
+      // Red expanding ring at basket
+      const r = 22 + e.t * 55;
+      ctx.strokeStyle = `rgba(220,30,0,${e.l * 0.85})`;
+      ctx.lineWidth   = 5;
+      ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = 'bold 19px Arial Black';
+      ctx.shadowBlur = 7; ctx.shadowColor = '#FF0000';
+      ctx.fillStyle = '#FF7777';
+      ctx.fillText(e.txt, e.x, e.y - 62 - e.t * 25);
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  });
+}
+
+/* ==========================================================
+   8. COMMENTARY
+   ========================================================== */
+
+function setCmt(txt) {
+  GS.cText  = txt;
+  GS.cTimer = 0;
+  GS.cAlpha = 1;
+}
+
+function updCmt(dt) {
+  GS.cTimer += dt;
+  if (GS.cTimer > GS.cDur) {
+    GS.cTimer = 0;
+    GS.cText  = pick(COMMENTARY);
+  }
+  const t = GS.cTimer, d = GS.cDur;
+  GS.cAlpha = t < 0.35 ? t / 0.35 : t > d - 0.5 ? (d - t) / 0.5 : 1;
+}
+
+function drawCmt() {
+  const cH = 38, cy = H - cH;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, GS.cAlpha);
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, cy, W, cH);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'bold 15px Arial, sans-serif';
+  ctx.shadowBlur = 3; ctx.shadowColor = '#000';
+  ctx.fillStyle = COLORS.gold;
+  ctx.fillText('📢  ' + GS.cText, W / 2, cy + cH / 2);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+/* ==========================================================
+   9. COURT DRAWING
+   ========================================================== */
+
+// Returns right basket rim X for effect positioning
+function rimX() {
+  const mg = 22, pW = W * 0.175;
+  const pX2 = W - mg - pW;
+  return pX2 - 20;
+}
+
+function drawCourt() {
+  // Hardwood gradient
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0,   '#D8B474');
+  g.addColorStop(0.5, '#C8A96E');
+  g.addColorStop(1,   '#A07840');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // Wood planks
+  ctx.strokeStyle = 'rgba(120,70,20,0.2)'; ctx.lineWidth = 1;
+  for (let y = 15; y < H; y += 22) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  const mg = 22;
+  ctx.strokeStyle = COLORS.courtLine; ctx.lineWidth = 2.5;
+
+  // Court boundary
+  ctx.strokeRect(mg, mg, W - mg * 2, H - mg * 2);
+
+  // Half-court line
+  ctx.beginPath(); ctx.moveTo(W / 2, mg); ctx.lineTo(W / 2, H - mg); ctx.stroke();
+
+  // Center circle
+  ctx.beginPath(); ctx.arc(W / 2, H / 2, H * 0.17, 0, Math.PI * 2); ctx.stroke();
+
+  const pW  = W * 0.175;
+  const pHH = H * 0.22;
+  const pY  = H / 2 - pHH;
+  const pH  = pHH * 2;
+  const pX1 = mg;
+  const pX2 = W - mg - pW;
+
+  // Paint areas
+  ctx.fillStyle = COLORS.paint;
+  ctx.fillRect(pX1, pY, pW, pH); ctx.strokeRect(pX1, pY, pW, pH);
+  ctx.fillRect(pX2, pY, pW, pH); ctx.strokeRect(pX2, pY, pW, pH);
+
+  // Free-throw arcs
+  ctx.beginPath(); ctx.arc(pX1 + pW, H / 2, pHH, -Math.PI / 2, Math.PI / 2,  false); ctx.stroke();
+  ctx.beginPath(); ctx.arc(pX2,       H / 2, pHH,  Math.PI / 2, -Math.PI / 2, false); ctx.stroke();
+
+  // Three-point arcs
+  ctx.beginPath(); ctx.arc(pX1,     H / 2, H * 0.41, -Math.PI * 0.43,  Math.PI * 0.43, false); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W - mg,  H / 2, H * 0.41,  Math.PI * 0.57,  Math.PI * 1.43, false); ctx.stroke();
+
+  // Baskets
+  _drawBasket(pX1 + pW, H / 2, 'left');
+  _drawBasket(pX2,      H / 2, 'right');
+}
+
+function _drawBasket(cx, cy, side) {
+  const isR  = side === 'right';
+  const rimX_ = cx + (isR ? -20 : 20);
+  const bbX   = cx + (isR ?   6 :  -6);
+  const bbH   = 50;
+
+  // Backboard (right basket glows orange as target)
+  ctx.fillStyle   = isR ? 'rgba(255,100,0,0.18)' : 'rgba(200,200,200,0.1)';
+  ctx.fillRect(bbX - 3, cy - bbH / 2, 6, bbH);
+  ctx.strokeStyle = isR ? '#FF6600' : COLORS.courtLine;
+  ctx.lineWidth   = 3;
+  ctx.strokeRect(bbX - 3, cy - bbH / 2, 6, bbH);
+
+  // Rim
+  ctx.beginPath(); ctx.arc(rimX_, cy, 16, 0, Math.PI * 2);
+  ctx.strokeStyle = isR ? '#FF8800' : '#CC3300';
+  ctx.lineWidth   = 3; ctx.stroke();
+
+  // Net
+  ctx.strokeStyle = 'rgba(255,255,255,0.42)'; ctx.lineWidth = 1;
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(rimX_ - 13 + i * 5.2, cy + 12);
+    ctx.lineTo(rimX_ - 10 + i * 4.5, cy + 27);
+    ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(rimX_ - 13, cy + 19); ctx.lineTo(rimX_ + 14, cy + 19); ctx.stroke();
+}
+
+/* ==========================================================
+   10. HUD
+   ========================================================== */
+
+function drawHUD() {
+  // Scoreboard
+  const sbW = 242, sbH = 52, sbX = W / 2 - 121, sbY = 10;
+  ctx.fillStyle = 'rgba(5,5,20,0.86)';
+  rr(sbX, sbY, sbW, sbH, 12); ctx.fill();
+  ctx.strokeStyle = '#FF6600'; ctx.lineWidth = 2; ctx.stroke();
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.font = 'bold 12px Arial Black'; ctx.fillStyle = '#00FF88';
+  ctx.fillText('YOU', sbX + sbW * 0.25, sbY + 8);
+  ctx.font = 'bold 24px Arial Black'; ctx.fillStyle = '#FFF';
+  ctx.fillText(GS.pScore, sbX + sbW * 0.25, sbY + 24);
+
+  ctx.strokeStyle = 'rgba(255,102,0,0.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(sbX + sbW / 2, sbY + 8); ctx.lineTo(sbX + sbW / 2, sbY + sbH - 8); ctx.stroke();
+
+  ctx.font = 'bold 12px Arial Black'; ctx.fillStyle = '#FF6600';
+  ctx.fillText('FOX 🦊', sbX + sbW * 0.75, sbY + 8);
+  ctx.font = 'bold 24px Arial Black'; ctx.fillStyle = '#FF4444';
+  ctx.fillText(GS.fScore, sbX + sbW * 0.75, sbY + 24);
+
+  // Timer
+  const tmW = 80, tmH = 52, tmX = W - tmW - 12, tmY = 10;
+  const low  = GS.timeLeft <= 10;
+  const blink = low ? 0.62 + 0.38 * Math.sin(performance.now() * 0.008) : 1;
+
+  ctx.fillStyle = 'rgba(5,5,20,0.86)';
+  rr(tmX, tmY, tmW, tmH, 12); ctx.fill();
+  ctx.strokeStyle = low ? '#FF3333' : '#FF6600'; ctx.lineWidth = 2; ctx.stroke();
+
+  ctx.globalAlpha = blink;
+  ctx.font = 'bold 28px Arial Black'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowBlur = low ? 14 : 0; ctx.shadowColor = '#FF0000';
+  ctx.fillStyle  = low ? '#FF4444' : '#FFF';
+  ctx.fillText(Math.ceil(Math.max(0, GS.timeLeft)), tmX + tmW / 2, tmY + tmH / 2 - 3);
+  ctx.shadowBlur = 0;
+  ctx.font = '10px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.textBaseline = 'bottom';
+  ctx.fillText('SEC', tmX + tmW / 2, tmY + tmH - 5);
+  ctx.globalAlpha = 1;
+}
+
+/* ==========================================================
+   11. MENU SCREEN
+   ========================================================== */
+
+function initParticles() {
+  GS.particles = [];
+  for (let i = 0; i < 22; i++) {
+    GS.particles.push({
+      x:   Math.random() * W,
+      y:   Math.random() * H,
+      vx:  (Math.random() - 0.5) * 36,
+      vy:  (Math.random() - 0.5) * 36,
+      r:   5 + Math.random() * 9,
+      hue: 15 + Math.random() * 25,
+      rot: Math.random() * Math.PI * 2,
+      rs:  (Math.random() - 0.5) * 1.5,
+    });
+  }
+}
+
+function updMenu(dt) {
+  GS.tagTimer += dt;
+  if (GS.tagTimer > 4.2) {
+    GS.tagTimer -= 4.2;
+    GS.tagIdx    = (GS.tagIdx + 1) % TAGLINES.length;
+  }
+  GS.particles.forEach(p => {
+    p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.rs * dt;
+    if (p.x < -15) p.x = W + 15; if (p.x > W + 15) p.x = -15;
+    if (p.y < -15) p.y = H + 15; if (p.y > H + 15) p.y = -15;
+  });
+}
+
+function drawMenu() {
+  ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.globalAlpha = 0.07; drawCourt(); ctx.restore();
+
+  GS.particles.forEach(p => {
+    ctx.save(); ctx.globalAlpha = 0.35;
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${p.hue},100%,62%)`; ctx.fill();
+    ctx.restore();
+  });
+
+  const cx = W / 2;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // Main title
+  const ts = Math.max(30, Math.min(68, W * 0.077));
+  ctx.shadowBlur = 28; ctx.shadowColor = '#FF6600';
+  ctx.font = `bold ${ts}px Arial Black, Impact`;
+  ctx.fillStyle = '#FF6600';
+  ctx.fillText('🦊  BEAT THE FOX  🦊', cx, H * 0.165);
+  ctx.shadowBlur = 0;
+
+  // Subtitle
+  ctx.font = `bold ${Math.max(13, ts * 0.41)}px Arial Black`;
+  ctx.fillStyle = COLORS.gold;
+  ctx.fillText('GAME 4 REVENGE EDITION', cx, H * 0.265);
+
+  // Tagline with fade
+  const tr = GS.tagTimer / 4.2;
+  const fa = tr < 0.1 ? tr / 0.1 : tr > 0.88 ? (1 - tr) / 0.12 : 1;
+  ctx.globalAlpha = Math.max(0, fa);
+  ctx.font = `italic ${Math.max(11, ts * 0.24)}px Arial`;
+  ctx.fillStyle = 'rgba(255,255,200,0.92)';
+  ctx.fillText(TAGLINES[GS.tagIdx], cx, H * 0.345);
+  ctx.globalAlpha = 1;
+
+  // Two info cards
+  const cH   = Math.min(H * 0.29, 158);
+  const gap  = 18;
+  const tcW  = Math.min(W * 0.8, 700);
+  const cW   = (tcW - gap) / 2;
+  const c1x  = cx - tcW / 2;
+  const c2x  = c1x + cW + gap;
+  const cY   = H * 0.415;
+
+  // Fox Game 4 stats card
+  ctx.fillStyle = 'rgba(0,0,0,0.74)';
+  rr(c1x, cY, cW, cH, 14); ctx.fill();
+  ctx.strokeStyle = '#FF6600'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = `bold ${Math.max(11, cH * 0.105)}px Arial Black`;
+  ctx.textAlign = 'center'; ctx.fillStyle = '#FF6600';
+  ctx.fillText("FOX'S GAME 4 STATS 📊", c1x + cW / 2, cY + cH * 0.165);
+
+  const statRows = [['FG', '4/14 (28.6%)'], ['TOs', '5 🤦'], ['+/-', '-18 💀'], ['3PT', '0/4']];
+  const ss = Math.max(10, cH * 0.09);
+  ctx.font = `${ss}px Arial`;
+  statRows.forEach(([lbl, val], i) => {
+    const sy = cY + cH * 0.325 + i * (cH * 0.155);
+    ctx.textAlign = 'left';  ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.fillText(lbl, c1x + 14, sy);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#FF6868';               ctx.fillText(val, c1x + cW - 12, sy);
+  });
+
+  // How to play card
+  ctx.fillStyle = 'rgba(0,0,0,0.74)';
+  rr(c2x, cY, cW, cH, 14); ctx.fill();
+  ctx.strokeStyle = COLORS.green; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = `bold ${Math.max(11, cH * 0.105)}px Arial Black`;
+  ctx.textAlign = 'center'; ctx.fillStyle = COLORS.green;
+  ctx.fillText('HOW TO PLAY 🏀', c2x + cW / 2, cY + cH * 0.165);
+
+  const howTo = [
+    '• Click/tap Fox to steal the ball',
+    '• Each steal = +1 point for YOU',
+    '• Fox speeds up every 10 seconds',
+    '• 60 seconds on the clock — GO!',
+  ];
+  ctx.font = `${ss}px Arial`; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.84)';
+  howTo.forEach((line, i) => ctx.fillText(line, c2x + 12, cY + cH * 0.325 + i * (cH * 0.155)));
+
+  // START button
+  const bW = Math.min(242, W * 0.38), bH = 58;
+  const bX = cx - bW / 2, bY = H * 0.835;
+  GS.menuBtns.start = { x: bX, y: bY, w: bW, h: bH };
+
+  const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.003);
+  ctx.shadowBlur = 8 + 22 * pulse; ctx.shadowColor = '#FF6600';
+  const bg = ctx.createLinearGradient(bX, bY, bX, bY + bH);
+  bg.addColorStop(0, '#FF8800'); bg.addColorStop(1, '#CC4400');
+  ctx.fillStyle = bg; rr(bX, bY, bW, bH, 14); ctx.fill();
+  ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.font = `bold ${Math.max(16, bH * 0.42)}px Arial Black, Impact`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowBlur = 4; ctx.shadowColor = '#000';
+  ctx.fillStyle = '#FFF';
+  ctx.fillText('▶  START GAME', cx, bY + bH / 2);
+  ctx.shadowBlur = 0;
+}
+
+/* ==========================================================
+   12. GAME OVER SCREEN
+   ========================================================== */
+
+const GRADE_COLORS = { 'A+': '#FFD700', A: '#00FF88', B: '#44AAFF', C: '#FF8800', D: '#FF5544', F: '#FF2222' };
+
+function getGrade() {
+  const d = GS.pScore - GS.fScore;
+  if (GS.pScore === 0) return { g: 'F',  m: "Did you even try?? Fox had a better Game 4." };
+  if (d >= 5)          return { g: 'A+', m: "You shut down the Fox! Championship material 🏆" };
+  if (d >  0)          return { g: 'A',  m: "Better than any defender in Game 4." };
+  if (d === 0)         return { g: 'B',  m: "Good enough. Way better than whatever Fox did." };
+  if (d >= -2)         return { g: 'C',  m: "You tried. Unlike Fox's jumper." };
+  return                      { g: 'D',  m: "Fox got you too? That's embarrassing." };
+}
+
+function drawGameOver() {
+  ctx.fillStyle = 'rgba(8,4,18,0.97)'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.globalAlpha = 0.06; drawCourt(); ctx.restore();
+
+  drawConfetti();
+
+  const cx = W / 2;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // Title
+  ctx.shadowBlur = 22; ctx.shadowColor = '#FF6600';
+  ctx.font = `bold ${Math.max(24, W * 0.062)}px Arial Black, Impact`;
+  ctx.fillStyle = '#FF6600';
+  ctx.fillText('FINAL BUZZER! 🏀', cx, H * 0.09);
+  ctx.shadowBlur = 0;
+
+  // Two stat cards
+  const cH  = Math.min(H * 0.28, 154);
+  const gap = 22;
+  const tcW = Math.min(W * 0.76, 660);
+  const cW  = (tcW - gap) / 2;
+  const c1x = cx - tcW / 2;
+  const c2x = c1x + cW + gap;
+  const cY  = H * 0.18;
+
+  // Player card (green tint)
+  ctx.fillStyle = 'rgba(0,55,0,0.58)';
+  rr(c1x, cY, cW, cH, 14); ctx.fill();
+  ctx.strokeStyle = COLORS.green; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = `bold ${Math.max(11, cH * 0.11)}px Arial Black`;
+  ctx.textAlign = 'center'; ctx.fillStyle = '#00FF88';
+  ctx.fillText('YOUR STATS', c1x + cW / 2, cY + cH * 0.17);
+
+  const pLines = [`${GS.pScore} steals 🎉`, `${GS.fScore} let through 😤`, `${60 - Math.ceil(GS.timeLeft)}s played ⏱`];
+  const pfs    = Math.max(11, cH * 0.1);
+  ctx.font = `${pfs}px Arial`;
+  pLines.forEach((v, i) => {
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.textAlign = 'center';
+    ctx.fillText(v, c1x + cW / 2, cY + cH * 0.37 + i * cH * 0.2);
+  });
+
+  // Fox card (red tint)
+  ctx.fillStyle = 'rgba(55,0,0,0.58)';
+  rr(c2x, cY, cW, cH, 14); ctx.fill();
+  ctx.strokeStyle = '#FF4444'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = `bold ${Math.max(11, cH * 0.11)}px Arial Black`;
+  ctx.textAlign = 'center'; ctx.fillStyle = '#FF7777';
+  ctx.fillText("FOX'S GAME 4", c2x + cW / 2, cY + cH * 0.17);
+
+  const fLines = ['4/14 FG 😬', '5 turnovers 🤦', '-18 +/- 💀'];
+  ctx.font = `${pfs}px Arial`;
+  fLines.forEach((v, i) => {
+    ctx.fillStyle = 'rgba(255,200,200,0.9)'; ctx.textAlign = 'center';
+    ctx.fillText(v, c2x + cW / 2, cY + cH * 0.37 + i * cH * 0.2);
+  });
+
+  // VS badge in the gap between cards
+  ctx.font = `bold ${Math.max(16, cH * 0.2)}px Arial Black`;
+  ctx.fillStyle = 'rgba(255,255,255,0.32)';
+  ctx.fillText('VS', cx, cY + cH / 2);
+
+  // Grade
+  const gr     = getGrade();
+  const gcol   = GRADE_COLORS[gr.g] || '#FFF';
+  const gY     = cY + cH + 26;
+
+  ctx.shadowBlur = 18; ctx.shadowColor = gcol;
+  ctx.font = `bold ${Math.max(20, W * 0.055)}px Arial Black, Impact`;
+  ctx.fillStyle = gcol; ctx.textAlign = 'center';
+  ctx.fillText(`DEFENSIVE RATING: ${gr.g}`, cx, gY);
+  ctx.shadowBlur = 0;
+
+  ctx.font = `${Math.max(12, W * 0.022)}px Arial`;
+  ctx.fillStyle = 'rgba(255,255,200,0.92)';
+  ctx.fillText(gr.m, cx, gY + 40);
+
+  // Buttons
+  const bW = Math.min(185, W * 0.26), bH = 52;
+  const b1x = cx - bW - 14, b2x = cx + 14, bY = H * 0.875;
+  GS.goBtns.play  = { x: b1x, y: bY, w: bW, h: bH };
+  GS.goBtns.share = { x: b2x, y: bY, w: bW, h: bH };
+
+  ctx.fillStyle = '#CC4400';
+  rr(b1x, bY, bW, bH, 12); ctx.fill();
+  ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = `bold ${Math.max(13, bH * 0.37)}px Arial Black`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#FFF'; ctx.fillText('▶ PLAY AGAIN', b1x + bW / 2, bY + bH / 2);
+
+  ctx.fillStyle = '#145A2E';
+  rr(b2x, bY, bW, bH, 12); ctx.fill();
+  ctx.strokeStyle = COLORS.green; ctx.lineWidth = 2; ctx.stroke();
+  ctx.font = `bold ${Math.max(13, bH * 0.37)}px Arial Black`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#FFF'; ctx.fillText('📋 SHARE SCORE', b2x + bW / 2, bY + bH / 2);
+}
+
+/* ==========================================================
+   13. INPUT HANDLERS
+   ========================================================== */
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx   = W / rect.width, sy = H / rect.height;
+  const src  = e.changedTouches ? e.changedTouches[0] : e;
+  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
+}
+
+function inBox(p, b) {
+  return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
+}
+
+function onInput(pos) {
+  if (GS.screen === 'menu') {
+    if (GS.menuBtns.start && inBox(pos, GS.menuBtns.start)) startGame();
+
+  } else if (GS.screen === 'playing') {
+    if (fox && !fox.tripped && fox.hit(pos.x, pos.y)) {
+      GS.pScore++;
+      addFx('steal', pos.x, pos.y, pick(STEAL_MSGS));
+      setCmt(pick(COMMENTARY));
+      confetti(pos.x, pos.y);
+      fox.trip();
+    }
+
+  } else if (GS.screen === 'gameover') {
+    if (GS.goBtns.play  && inBox(pos, GS.goBtns.play))  { startGame(); return; }
+    if (GS.goBtns.share && inBox(pos, GS.goBtns.share)) shareScore();
+  }
+}
+
+canvas.addEventListener('click',    e => { e.preventDefault(); onInput(getPos(e)); });
+canvas.addEventListener('touchend', e => { e.preventDefault(); onInput(getPos(e)); }, { passive: false });
+
+/* ==========================================================
+   14. GAME LIFECYCLE
+   ========================================================== */
+
+let fox = null;
+
+function startGame() {
+  GS.screen    = 'playing';
+  GS.pScore    = 0;
+  GS.fScore    = 0;
+  GS.timeLeft  = 60;
+  GS.gameStart = performance.now();
+  CP.length    = 0;
+  FX.length    = 0;
+  setCmt('Click Fox before he reaches the basket! 🏀');
+  fox = new Fox();
+  document.getElementById('donate-btn').style.display = 'block';
+}
+
+function endGame() {
+  GS.screen = 'gameover';
+  fox       = null;
+  confetti(W / 2,       H / 2, 55);
+  confetti(W * 0.18,    H * 0.28, 28);
+  confetti(W * 0.82,    H * 0.28, 28);
+}
+
+function shareScore() {
+  const { g, m } = getGrade();
+  const text = [
+    '🦊 BEAT THE FOX: Game 4 Revenge',
+    `Steals: ${GS.pScore}  |  Fox scored: ${GS.fScore}`,
+    `Defensive Rating: ${g}`,
+    m,
+  ].join('\n');
+  navigator.clipboard.writeText(text)
+    .then(() => setCmt('Score copied to clipboard! 📋'))
+    .catch(() => setCmt(`Rating: ${g} — ${m}`));
+}
+
+/* ==========================================================
+   15. GAME LOOP  (update + render)
+   ========================================================== */
+
+let lastTS = 0;
+
+function loop(ts) {
+  const dt = Math.min((ts - lastTS) / 1000, 0.1);
+  lastTS = ts;
+
+  // — UPDATE —
+  if (GS.screen === 'menu') {
+    updMenu(dt);
+
+  } else if (GS.screen === 'playing') {
+    GS.timeLeft -= dt;
+    if (GS.timeLeft <= 0) {
+      GS.timeLeft = 0;
+      endGame();
+    } else {
+      if (fox) fox.update(dt);
+      updFx(dt);
+      updConfetti(dt);
+      updCmt(dt);
+    }
+
+  } else if (GS.screen === 'gameover') {
+    updConfetti(dt);
+  }
+
+  // — RENDER —
+  ctx.clearRect(0, 0, W, H);
+
+  if (GS.screen === 'menu') {
+    drawMenu();
+
+  } else if (GS.screen === 'playing') {
+    drawCourt();
+    if (fox) fox.draw();
+    drawConfetti();
+    drawFx();
+    drawHUD();
+    drawCmt();
+
+  } else if (GS.screen === 'gameover') {
+    drawGameOver();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* ==========================================================
+   16. INIT
+   ========================================================== */
+
+initParticles();
+requestAnimationFrame(loop);
+
+/* ==========================================================
+   17. DONATION MODAL
+   ========================================================== */
+
+(function () {
+  const overlay  = document.getElementById('donate-overlay');
+  const closeBtn = document.getElementById('donate-close');
+  const presets  = document.querySelectorAll('.donate-preset');
+  const custom   = document.getElementById('donate-custom');
+  const submit   = document.getElementById('donate-submit');
+  const donateBtn = document.getElementById('donate-btn');
+
+  let selectedAmount = 5; // default matches the pre-selected $5 pill
+
+  function openModal() {
+    overlay.classList.add('open');
+    custom.value = '';
+    setPreset(5);
+  }
+
+  function closeModal() {
+    overlay.classList.remove('open');
+    submit.disabled = false;
+    submit.textContent = 'DONATE';
+  }
+
+  function setPreset(amount) {
+    selectedAmount = amount;
+    custom.value   = '';
+    presets.forEach(b => b.classList.toggle('sel', parseInt(b.dataset.amount, 10) === amount));
+  }
+
+  donateBtn.addEventListener('click', openModal);
+  closeBtn.addEventListener('click', closeModal);
+
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeModal();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+  });
+
+  presets.forEach(btn => {
+    btn.addEventListener('click', () => setPreset(parseInt(btn.dataset.amount, 10)));
+  });
+
+  custom.addEventListener('input', () => {
+    presets.forEach(b => b.classList.remove('sel'));
+    selectedAmount = null;
+  });
+
+  submit.addEventListener('click', async () => {
+    const customVal = custom.value.trim();
+    const amount    = customVal ? parseInt(customVal, 10) : selectedAmount;
+
+    if (!amount || isNaN(amount) || amount < 1 || amount > 1000) {
+      alert('Please select or enter a valid amount ($1–$1000).');
+      return;
+    }
+
+    submit.disabled    = true;
+    submit.textContent = 'Processing…';
+
+    try {
+      const res = await fetch('/api/donate', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ amount }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server error (${res.status})`);
+      }
+
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch (err) {
+      alert(
+        'Could not process donation: ' + err.message +
+        '\n\nTip: Run `npm run dev` to start the local server.'
+      );
+      submit.disabled    = false;
+      submit.textContent = 'DONATE';
+    }
+  });
+}());
+</script>
+</body>
+</html>
